@@ -2,7 +2,7 @@ import axios from "axios";
 import { ref } from "vue";
 
 const API_BASE = "/api/coingecko";
-const RETRY_DELAY = 5000; // 5 saniye bekle
+const RETRY_DELAY = 55000; // 55 saniye bekle
 const MAX_COINS_PER_REQUEST = 2; // Her seferde en fazla 2 coin
 let lastFetchTime = 0;
 
@@ -18,7 +18,7 @@ export function useCoinPrices() {
   async function fetchWithRetry(url, config, retries = 3) {
     for (let i = 0; i < retries; i++) {
       try {
-        // API çağrıları arasında en az 5 saniye bekle
+        // API çağrıları arasında en az 55 saniye bekle
         const now = Date.now();
         const timeSinceLastFetch = now - lastFetchTime;
         if (timeSinceLastFetch < RETRY_DELAY) {
