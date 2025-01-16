@@ -52,7 +52,7 @@ async function updateCoinPrices() {
 
     // CoinGecko'dan fiyatları çek
     const response = await fetch(
-      `/api/coingecko/simple/price?` +
+      `https://api.coingecko.com/api/v3/simple/price?` +
         new URLSearchParams({
           ids: Array.from(uniqueCoins).join(","),
           vs_currencies: "usd",

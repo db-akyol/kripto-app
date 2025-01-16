@@ -12,7 +12,7 @@ export function useCoins() {
 
     try {
       const response = await fetch(
-        `/api/coingecko/coins/markets?` +
+        `https://api.coingecko.com/api/v3/coins/markets?` +
           new URLSearchParams({
             vs_currency: "usd",
             order: "market_cap_desc",
