@@ -1,11 +1,13 @@
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted, watch, onUnmounted } from "vue";
 import { getDefaultPortfolios } from "./useDefaultPortfolios";
 
 const STORAGE_KEY = "crypto-portfolios";
+const UPDATE_INTERVAL = 60000; // 1 dakika
 
 // Singleton state
 const portfolios = ref([]);
 const selectedPortfolio = ref(null);
+let priceUpdateInterval = null;
 
 function loadPortfoliosFromStorage() {
   try {
@@ -38,27 +40,83 @@ function updatePortfolioValues(portfolio) {
   });
 }
 
-// Portföyleri yükle ve ilk portföyü seç
+async function updateCoinPrices() {
+  try {
+    // Tüm portföylerdeki benzersiz coinleri bul
+    const uniqueCoins = new Set();
+    portfolios.value.forEach(portfolio => {
+      portfolio.coins.forEach(coin => {
+        uniqueCoins.add(coin.coingeckoId);
+      });
+    });
+
+    // CoinGecko'dan fiyatları çek
+    const response = await fetch(
+      `/api/coingecko/simple/price?` +
+        new URLSearchParams({
+          ids: Array.from(uniqueCoins).join(","),
+          vs_currencies: "usd",
+          include_24h_change: "true",
+        })
+    );
+
+    if (!response.ok) {
+      throw new Error(`Fiyat güncellemesi başarısız oldu (${response.status})`);
+    }
+
+    const prices = await response.json();
+
+    // Portföylerdeki coin fiyatlarını güncelle
+    portfolios.value.forEach(portfolio => {
+      portfolio.coins.forEach(coin => {
+        const priceData = prices[coin.coingeckoId];
+        if (priceData) {
+          coin.price = priceData.usd;
+          coin.change24h = priceData.usd_24h_change;
+          coin.value = coin.balance * coin.price;
+        }
+      });
+      updatePortfolioValues(portfolio);
+    });
+  } catch (error) {
+    console.error("Fiyatlar güncellenirken hata oluştu:", error);
+  }
+}
+
+// Sayfa yüklendiğinde portföyleri yükle ve fiyat güncellemesini başlat
 function initializePortfolios() {
   portfolios.value = loadPortfoliosFromStorage();
   if (portfolios.value.length > 0 && !selectedPortfolio.value) {
     selectedPortfolio.value = portfolios.value[0];
   }
+
+  // İlk fiyat güncellemesini yap
+  updateCoinPrices();
 }
 
-// Sayfa yüklendiğinde portföyleri yükle
-initializePortfolios();
-
-// Portföylerdeki değişiklikleri izle
-watch(
-  portfolios,
-  () => {
-    savePortfoliosToStorage();
-  },
-  { deep: true }
-);
-
 export function usePortfolios() {
+  // Portföylerdeki değişiklikleri izle
+  watch(
+    portfolios,
+    () => {
+      savePortfoliosToStorage();
+    },
+    { deep: true }
+  );
+
+  onMounted(() => {
+    initializePortfolios();
+    // Periyodik güncellemeyi başlat
+    priceUpdateInterval = setInterval(updateCoinPrices, UPDATE_INTERVAL);
+  });
+
+  // Component unmount olduğunda interval'i temizle
+  onUnmounted(() => {
+    if (priceUpdateInterval) {
+      clearInterval(priceUpdateInterval);
+    }
+  });
+
   const totalValue = computed(() => {
     return portfolios.value.reduce((sum, portfolio) => sum + portfolio.value, 0);
   });
@@ -107,5 +165,6 @@ export function usePortfolios() {
     removeCoin,
     updatePortfolioValues,
     resetPortfolios,
+    updateCoinPrices,
   };
 }

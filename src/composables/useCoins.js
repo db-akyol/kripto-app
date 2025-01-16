@@ -11,33 +11,28 @@ export function useCoins() {
     coins.value = []; // Önceki verileri temizle
 
     try {
-      // 250'şer coinlik 4 sayfa çekeceğiz (toplam 1000 coin)
-      const pages = [1, 2, 3, 4];
-      const allCoins = await Promise.all(
-        pages.map(async page => {
-          const response = await fetch(
-            `/api/coingecko/coins/markets?` +
-              new URLSearchParams({
-                vs_currency: "usd",
-                order: "market_cap_desc",
-                per_page: "250",
-                page: page.toString(),
-                sparkline: "false",
-                locale: "tr",
-              })
-          );
-
-          if (!response.ok) {
-            throw new Error(`Sayfa ${page} için coin verileri alınamadı`);
-          }
-
-          return response.json();
-        })
+      const response = await fetch(
+        `/api/coingecko/coins/markets?` +
+          new URLSearchParams({
+            vs_currency: "usd",
+            order: "market_cap_desc",
+            per_page: "50", // Sadece ilk 50 coin
+            page: "1",
+            sparkline: "false",
+            locale: "tr",
+          })
       );
 
-      // Tüm sayfalardan gelen verileri birleştir
-      coins.value = allCoins.flat().map(coin => ({
+      if (!response.ok) {
+        throw new Error(`Coin verileri alınamadı (${response.status})`);
+      }
+
+      const data = await response.json();
+
+      // Verileri işle
+      coins.value = data.map(coin => ({
         id: coin.id,
+        coingeckoId: coin.id,
         name: coin.name,
         symbol: coin.symbol.toUpperCase(),
         icon: coin.image,
@@ -46,7 +41,7 @@ export function useCoins() {
         marketCap: coin.market_cap,
       }));
     } catch (e) {
-      error.value = e.message;
+      error.value = "Coin verileri yüklenirken bir hata oluştu. Lütfen daha sonra tekrar deneyin.";
       console.error("Coin verileri çekilirken hata oluştu:", e);
     } finally {
       isLoading.value = false;

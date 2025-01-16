@@ -220,6 +220,7 @@ function addTransaction() {
       name: selectedCoin.value.name,
       symbol: selectedCoin.value.symbol,
       icon: selectedCoin.value.icon,
+      coingeckoId: selectedCoin.value.coingeckoId,
       price: price.value,
       balance: quantity.value,
       value: quantity.value * price.value,
