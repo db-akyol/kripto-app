@@ -2,21 +2,75 @@ import { ref, computed, onMounted, watch, onUnmounted } from "vue";
 import { getDefaultPortfolios } from "./useDefaultPortfolios";
 
 const STORAGE_KEY = "crypto-portfolios";
-const UPDATE_INTERVAL = 60000; // 1 dakika
+const UPDATE_INTERVAL = 30000; // 30 saniye
 
 // Singleton state
 const portfolios = ref([]);
 const selectedPortfolio = ref(null);
 let priceUpdateInterval = null;
 
+// Helper to find coingeckoId from defaults
+function findCoingeckoId(symbol, name) {
+  const defaults = getDefaultPortfolios();
+  for (const p of defaults) {
+    const coin = p.coins.find(c => c.symbol === symbol || c.name === name);
+    if (coin && coin.coingeckoId) return coin.coingeckoId;
+  }
+  // Fallback for common coins if not in defaults
+  const commonMap = {
+    'BTC': 'bitcoin',
+    'ETH': 'ethereum',
+    'SOL': 'solana',
+    'AVAX': 'avalanche-2',
+    'AAVE': 'aave',
+    'FTM': 'fantom',
+    'ARKM': 'arkham',
+    'FET': 'fetch-ai',
+    'PEPE': 'pepe',
+    'RNDR': 'render-token',
+    'PIXEL': 'pixels',
+    'WLD': 'worldcoin-wld',
+    'PNG': 'pangolin',
+    'TAI': 'tars-ai',
+    'WOJAK': 'wojak',
+    'POPCAT': 'popcat',
+    'CHILLGUY': 'just-a-chill-guy',
+    'NST': 'ninja-squad-token'
+  };
+  return commonMap[symbol] || null;
+}
+
 function loadPortfoliosFromStorage() {
   try {
     const storedPortfolios = localStorage.getItem(STORAGE_KEY);
-    return storedPortfolios ? JSON.parse(storedPortfolios) : getDefaultPortfolios();
+    if (storedPortfolios) {
+      const parsed = JSON.parse(storedPortfolios);
+      
+      // MIGRATION: Check for missing coingeckoIds and backfill
+      let updated = false;
+      parsed.forEach(portfolio => {
+        portfolio.coins.forEach(coin => {
+          if (!coin.coingeckoId) {
+             const id = findCoingeckoId(coin.symbol, coin.name);
+             if (id) {
+               coin.coingeckoId = id;
+               updated = true;
+             }
+          }
+        });
+      });
+      
+      if (updated) {
+        console.log("Eski veriler güncellendi (Migration uygulandı).");
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+      }
+      
+      return parsed;
+    }
   } catch (error) {
     console.error("Portföyler yüklenirken hata oluştu:", error);
-    return getDefaultPortfolios();
   }
+  return getDefaultPortfolios();
 }
 
 function savePortfoliosToStorage() {
@@ -33,26 +87,32 @@ function updatePortfolioValues(portfolio) {
   portfolio.value = portfolio.coins.reduce((sum, coin) => sum + coin.value, 0);
   portfolio.change24h = portfolio.coins.reduce((sum, coin) => sum + (coin.value * coin.change24h) / 100, 0);
 
-  // Yüzdelik dağılımları güncelle
   const totalValue = portfolio.value;
-  portfolio.coins.forEach(coin => {
-    coin.allocation = (coin.value / totalValue) * 100;
-  });
+  if (totalValue > 0) {
+    portfolio.coins.forEach(coin => {
+      coin.allocation = (coin.value / totalValue) * 100;
+    });
+  } else {
+    portfolio.coins.forEach(coin => coin.allocation = 0);
+  }
 }
 
 async function updateCoinPrices() {
+  if (portfolios.value.length === 0) return;
+
   try {
-    // Tüm portföylerdeki benzersiz coinleri bul
     const uniqueCoins = new Set();
     portfolios.value.forEach(portfolio => {
       portfolio.coins.forEach(coin => {
-        uniqueCoins.add(coin.coingeckoId);
+        if(coin.coingeckoId) uniqueCoins.add(coin.coingeckoId);
       });
     });
 
-    // CoinGecko'dan fiyatları çek
+    if (uniqueCoins.size === 0) return;
+
+    // CoinGecko API request
     const response = await fetch(
-      `https://api.coingecko.com/api/v3/simple/price?` +
+      `/api/coingecko/simple/price?` +
         new URLSearchParams({
           ids: Array.from(uniqueCoins).join(","),
           vs_currencies: "usd",
@@ -60,42 +120,48 @@ async function updateCoinPrices() {
         })
     );
 
-    if (!response.ok) {
-      throw new Error(`Fiyat güncellemesi başarısız oldu (${response.status})`);
-    }
+    if (!response.ok) throw new Error(`API Hatası: ${response.status}`);
 
     const prices = await response.json();
+    let changesMade = false;
 
-    // Portföylerdeki coin fiyatlarını güncelle
     portfolios.value.forEach(portfolio => {
       portfolio.coins.forEach(coin => {
         const priceData = prices[coin.coingeckoId];
         if (priceData) {
-          coin.price = priceData.usd;
-          coin.change24h = priceData.usd_24h_change;
-          coin.value = coin.balance * coin.price;
+          if (coin.price !== priceData.usd) {
+             coin.price = priceData.usd;
+             coin.change24h = priceData.usd_24h_change;
+             coin.value = coin.balance * coin.price;
+             changesMade = true;
+          }
         }
       });
       updatePortfolioValues(portfolio);
     });
+    
+    if(changesMade) savePortfoliosToStorage();
+
   } catch (error) {
-    console.error("Fiyatlar güncellenirken hata oluştu:", error);
+    console.error("Fiyat güncelleme hatası:", error);
   }
 }
 
-// Sayfa yüklendiğinde portföyleri yükle ve fiyat güncellemesini başlat
 function initializePortfolios() {
   portfolios.value = loadPortfoliosFromStorage();
+  
   if (portfolios.value.length > 0 && !selectedPortfolio.value) {
-    selectedPortfolio.value = portfolios.value[0];
+    // ID kontrolü yap ve yoksa ilki seç
+    const currentId = selectedPortfolio.value?.id;
+    if (!currentId || !portfolios.value.find(p => p.id === currentId)) {
+        selectedPortfolio.value = portfolios.value[0];
+    }
   }
 
-  // İlk fiyat güncellemesini yap
   updateCoinPrices();
 }
 
 export function usePortfolios() {
-  // Portföylerdeki değişiklikleri izle
   watch(
     portfolios,
     () => {
@@ -105,16 +171,11 @@ export function usePortfolios() {
   );
 
   onMounted(() => {
-    initializePortfolios();
-    // Periyodik güncellemeyi başlat
-    priceUpdateInterval = setInterval(updateCoinPrices, UPDATE_INTERVAL);
-  });
-
-  // Component unmount olduğunda interval'i temizle
-  onUnmounted(() => {
-    if (priceUpdateInterval) {
-      clearInterval(priceUpdateInterval);
+    if (portfolios.value.length === 0) {
+        initializePortfolios();
     }
+    if (priceUpdateInterval) clearInterval(priceUpdateInterval);
+    priceUpdateInterval = setInterval(updateCoinPrices, UPDATE_INTERVAL);
   });
 
   const totalValue = computed(() => {
@@ -129,7 +190,7 @@ export function usePortfolios() {
     selectedPortfolio.value = portfolio;
   }
 
-  function addCoin(portfolio, coin) {
+  async function addCoin(portfolio, coin) {
     const existingCoin = portfolio.coins.find(c => c.symbol === coin.symbol);
     if (existingCoin) {
       existingCoin.balance += coin.balance;
@@ -142,6 +203,7 @@ export function usePortfolios() {
     }
     updatePortfolioValues(portfolio);
     savePortfoliosToStorage();
+    await updateCoinPrices();
   }
 
   function removeCoin(portfolio, coinSymbol) {
@@ -152,7 +214,12 @@ export function usePortfolios() {
 
   function resetPortfolios() {
     localStorage.removeItem(STORAGE_KEY);
-    initializePortfolios();
+    portfolios.value = getDefaultPortfolios();
+    if (portfolios.value.length > 0) {
+       selectedPortfolio.value = portfolios.value[0];
+    }
+    savePortfoliosToStorage();
+    updateCoinPrices();
   }
 
   return {

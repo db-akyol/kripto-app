@@ -29,6 +29,7 @@ export function getDefaultPortfolios() {
         {
           name: "Aave",
           symbol: "AAVE",
+          coingeckoId: "aave",
           icon: "https://s2.coinmarketcap.com/static/img/coins/64x64/7278.png",
           price: 267.03,
           change1h: -1.43,
@@ -41,6 +42,7 @@ export function getDefaultPortfolios() {
         {
           name: "Avalanche",
           symbol: "AVAX",
+          coingeckoId: "avalanche-2",
           icon: "https://s2.coinmarketcap.com/static/img/coins/64x64/5805.png",
           price: 34.34,
           change1h: -0.67,
@@ -53,6 +55,7 @@ export function getDefaultPortfolios() {
         {
           name: "Fantom",
           symbol: "FTM",
+          coingeckoId: "fantom",
           icon: "https://s2.coinmarketcap.com/static/img/coins/64x64/3513.png",
           price: 0.827,
           change1h: 0,
@@ -65,6 +68,7 @@ export function getDefaultPortfolios() {
         {
           name: "Arkham",
           symbol: "ARKM",
+          coingeckoId: "arkham",
           icon: "https://s2.coinmarketcap.com/static/img/coins/64x64/24478.png",
           price: 1.2365,
           change1h: -1.03,
@@ -77,6 +81,7 @@ export function getDefaultPortfolios() {
         {
           name: "Fetch.ai",
           symbol: "FET",
+          coingeckoId: "fetch-ai",
           icon: "https://s2.coinmarketcap.com/static/img/coins/64x64/3773.png",
           price: 1.2076,
           change1h: -0.8,
@@ -89,6 +94,7 @@ export function getDefaultPortfolios() {
         {
           name: "Pepe",
           symbol: "PEPE",
+          coingeckoId: "pepe",
           icon: "https://s2.coinmarketcap.com/static/img/coins/64x64/24478.png",
           price: 0.00001668,
           change1h: -1.14,
@@ -101,6 +107,7 @@ export function getDefaultPortfolios() {
         {
           name: "Render",
           symbol: "RNDR",
+          coingeckoId: "render-token",
           icon: "https://s2.coinmarketcap.com/static/img/coins/64x64/7288.png",
           price: 6.6761,
           change1h: -1.01,
@@ -113,6 +120,7 @@ export function getDefaultPortfolios() {
         {
           name: "Pixels",
           symbol: "PIXEL",
+          coingeckoId: "pixels",
           icon: "https://s2.coinmarketcap.com/static/img/coins/64x64/28468.png",
           price: 0.1269,
           change1h: -3.0,
@@ -125,6 +133,7 @@ export function getDefaultPortfolios() {
         {
           name: "Worldcoin",
           symbol: "WLD",
+          coingeckoId: "worldcoin-wld",
           icon: "https://s2.coinmarketcap.com/static/img/coins/64x64/24275.png",
           price: 1.9768,
           change1h: -1.04,
@@ -145,6 +154,7 @@ export function getDefaultPortfolios() {
         {
           name: "Pangolin",
           symbol: "PNG",
+          coingeckoId: "pangolin",
           icon: "https://s2.coinmarketcap.com/static/img/coins/64x64/8422.png",
           price: 0.3001,
           change1h: -0.57,
@@ -157,6 +167,7 @@ export function getDefaultPortfolios() {
         {
           name: "TARS AI",
           symbol: "TAI",
+          coingeckoId: "tars-ai",
           icon: "https://s2.coinmarketcap.com/static/img/coins/64x64/28878.png",
           price: 0.2577,
           change1h: -2.4,
@@ -169,6 +180,7 @@ export function getDefaultPortfolios() {
         {
           name: "Wojak",
           symbol: "WOJAK",
+          coingeckoId: "wojak",
           icon: "https://s2.coinmarketcap.com/static/img/coins/64x64/24615.png",
           price: 0.0006697,
           change1h: -3.68,
@@ -181,6 +193,7 @@ export function getDefaultPortfolios() {
         {
           name: "Popcat (SOL)",
           symbol: "POPCAT",
+          coingeckoId: "popcat",
           icon: "https://s2.coinmarketcap.com/static/img/coins/64x64/24742.png",
           price: 0.513,
           change1h: -2.88,
@@ -193,6 +206,7 @@ export function getDefaultPortfolios() {
         {
           name: "Just a chill guy",
           symbol: "CHILLGUY",
+          coingeckoId: "just-a-chill-guy",
           icon: "https://s2.coinmarketcap.com/static/img/coins/64x64/28944.png",
           price: 0.1087,
           change1h: -2.94,
