@@ -11,26 +11,43 @@ export function useCoins() {
     coins.value = []; // Önceki verileri temizle
 
     try {
-      const response = await fetch(
-        `https://api.coingecko.com/api/v3/coins/markets?` +
-          new URLSearchParams({
-            vs_currency: "usd",
-            order: "market_cap_desc",
-            per_page: "50", // Sadece ilk 50 coin
-            page: "1",
-            sparkline: "false",
-            locale: "tr",
-          })
+      // CoinGecko API'si sayfa başına maksimum 250 coin veriyor.
+      // 1000 coin için 4 sayfayı paralel olarak çekiyoruz.
+      const pages = [1, 2, 3, 4];
+      
+      const responses = await Promise.all(
+        pages.map(page => 
+          fetch(
+            `/api/coingecko/coins/markets?` +
+              new URLSearchParams({
+                vs_currency: "usd",
+                order: "market_cap_desc",
+                per_page: "250",
+                page: page.toString(),
+                sparkline: "false",
+                locale: "tr",
+              })
+          )
+        )
       );
 
-      if (!response.ok) {
-        throw new Error(`Coin verileri alınamadı (${response.status})`);
+      // Tüm yanıtların başarılı olup olmadığını kontrol et
+      const validResponses = await Promise.all(
+        responses.map(async (res) => {
+           if (!res.ok) return [];
+           return res.json();
+        })
+      );
+
+      // Tüm sayfaların verilerini tek bir dizide birleştir
+      const allCoins = validResponses.flat();
+
+      if (allCoins.length === 0) {
+         throw new Error("Hiçbir coin verisi alınamadı.");
       }
 
-      const data = await response.json();
-
       // Verileri işle
-      coins.value = data.map(coin => ({
+      coins.value = allCoins.map(coin => ({
         id: coin.id,
         coingeckoId: coin.id,
         name: coin.name,

@@ -1,10 +1,13 @@
+import { exchanges } from "../data/exchanges";
+
 export function getDefaultPortfolios() {
+  const getIcon = (id) => exchanges.find(e => e.id === id)?.icon || "";
+
   const portfolios = [
     {
       id: 1,
-      name: "Bing.x",
-      icon: "B",
-      iconBg: "bg-cyan-500",
+      name: "BingX",
+      icon: getIcon("bingx"),
       coins: [
         {
           name: "Ninja Squad Token",
@@ -23,8 +26,7 @@ export function getDefaultPortfolios() {
     {
       id: 2,
       name: "Binance",
-      icon: "B",
-      iconBg: "bg-purple-500",
+      icon: getIcon("binance"),
       coins: [
         {
           name: "Aave",
@@ -148,8 +150,7 @@ export function getDefaultPortfolios() {
     {
       id: 3,
       name: "Gate.io",
-      icon: "G",
-      iconBg: "bg-orange-500",
+      icon: getIcon("gate"),
       coins: [
         {
           name: "Pangolin",

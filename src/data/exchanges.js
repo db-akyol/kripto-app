@@ -1,0 +1,22 @@
+export const exchanges = [
+  { id: 'binance', name: 'Binance', icon: 'https://cryptologos.cc/logos/binance-coin-bnb-logo.png' },
+  { id: 'coinbase', name: 'Coinbase', icon: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.png' },
+  { id: 'kraken', name: 'Kraken', icon: 'https://cryptologos.cc/logos/kraken-exchange-kai-logo.png' },
+  { id: 'kucoin', name: 'KuCoin', icon: 'https://cryptologos.cc/logos/kucoin-token-kcs-logo.png' },
+  { id: 'bybit', name: 'Bybit', icon: 'https://s2.coinmarketcap.com/static/img/exchanges/64x64/521.png' },
+  { id: 'okx', name: 'OKX', icon: 'https://cryptologos.cc/logos/okb-okb-logo.png' },
+  { id: 'gate', name: 'Gate.io', icon: 'https://cryptologos.cc/logos/gatechain-gt-logo.png' },
+  { id: 'bitfinex', name: 'Bitfinex', icon: 'https://cryptologos.cc/logos/bitfinex-leo-leo-logo.png' },
+  { id: 'mexc', name: 'MEXC', icon: 'https://s2.coinmarketcap.com/static/img/exchanges/64x64/544.png' },
+  { id: 'bingx', name: 'BingX', icon: 'https://s2.coinmarketcap.com/static/img/exchanges/64x64/1212.png' },
+  { id: 'bitget', name: 'Bitget', icon: 'https://s2.coinmarketcap.com/static/img/exchanges/64x64/513.png' },
+  { id: 'crypto_com', name: 'Crypto.com', icon: 'https://cryptologos.cc/logos/cronos-cro-logo.png' },
+  { id: 'huobi', name: 'HTX (Huobi)', icon: 'https://s2.coinmarketcap.com/static/img/exchanges/64x64/102.png' },
+  { id: 'gemini', name: 'Gemini', icon: 'https://cryptologos.cc/logos/gemini-dollar-gusd-logo.png' },
+  { id: 'bitstamp', name: 'Bitstamp', icon: 'https://s2.coinmarketcap.com/static/img/exchanges/64x64/70.png' },
+  { id: 'paribu', name: 'Paribu', icon: 'https://s2.coinmarketcap.com/static/img/exchanges/64x64/434.png' },
+  { id: 'btcturk', name: 'BtcTurk', icon: 'https://s2.coinmarketcap.com/static/img/exchanges/64x64/249.png' },
+  { id: 'metamask', name: 'MetaMask', icon: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/MetaMask_Fox.svg/800px-MetaMask_Fox.svg.png' },
+  { id: 'trustwallet', name: 'Trust Wallet', icon: 'https://cryptologos.cc/logos/trust-wallet-token-twt-logo.png' },
+  { id: 'coldwallet', name: 'Cold Wallet', icon: 'https://cdn-icons-png.flaticon.com/512/2592/2592201.png' }
+];

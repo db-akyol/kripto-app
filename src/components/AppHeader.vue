@@ -28,7 +28,7 @@
         <div class="flex items-center gap-4">
            <!-- User Profile / Settings placeholder -->
            <div class="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center cursor-pointer hover:bg-gray-600 transition-colors">
-              <span class="text-sm font-bold">SK</span>
+              <span class="text-sm font-bold">DA</span>
            </div>
         </div>
       </nav>
