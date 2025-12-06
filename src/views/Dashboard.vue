@@ -26,15 +26,24 @@
             </div>
             
             <!-- Timeframe toggles (Visual only for now) -->
+            <!-- Timeframe toggles -->
             <div class="flex bg-gray-800 rounded-lg p-1">
-              <button class="px-3 py-1 text-xs font-medium rounded text-gray-400 hover:text-white">24h</button>
-              <button class="px-3 py-1 text-xs font-medium rounded bg-gray-700 text-white shadow">7d</button>
-              <button class="px-3 py-1 text-xs font-medium rounded text-gray-400 hover:text-white">30d</button>
-              <button class="px-3 py-1 text-xs font-medium rounded text-gray-400 hover:text-white">All</button>
+              <button 
+                v-for="period in ['24h', '7d', '30d', '90d', 'all']" 
+                :key="period"
+                @click="selectPeriod(period)"
+                class="px-3 py-1 text-xs font-medium rounded transition-all capitalize"
+                :class="selectedPeriod === period ? 'bg-gray-600 text-white shadow' : 'text-gray-400 hover:text-white'"
+              >
+                {{ period }}
+              </button>
             </div>
           </div>
           
-          <div class="h-[300px] w-full">
+          <div class="h-[300px] w-full relative">
+            <div v-if="isLoadingHistory" class="absolute inset-0 flex items-center justify-center bg-[#0d1421]/80 z-10 rounded-lg backdrop-blur-sm">
+               <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+            </div>
             <canvas ref="historyChartCanvas"></canvas>
           </div>
         </div>
@@ -65,12 +74,14 @@ import AddCoinModal from "../components/AddCoinModal.vue";
 import HoldingsTable from "../components/HoldingsTable.vue";
 import PortfolioSidebar from "../components/PortfolioSidebar.vue";
 
-const { portfolios, selectedPortfolio } = usePortfolios();
+const { portfolios, selectedPortfolio, getPortfolioHistory } = usePortfolios();
 const historyChartCanvas = ref(null);
 const allocationChartCanvas = ref(null);
 let historyChart = null;
 let allocationChart = null;
 const showAddCoinModal = ref(false);
+const selectedPeriod = ref('7d');
+const isLoadingHistory = ref(false);
 
 const totalPortfolioValue = computed(() => {
   return portfolios.value.reduce((sum, portfolio) => sum + portfolio.value, 0);
@@ -81,6 +92,17 @@ function formatNumber(value) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+}
+
+let debounceTimer = null;
+function selectPeriod(period) {
+  if (selectedPeriod.value === period) return;
+  selectedPeriod.value = period;
+  
+  if (debounceTimer) clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+     createCharts();
+  }, 500);
 }
 
 // Chart Configuration
@@ -94,12 +116,25 @@ const commonOptions = {
 
 async function createCharts() {
   await nextTick();
+  
+  if (!selectedPortfolio.value) return;
 
+  // Preserve existing chart instances if just updating data? 
+  // For simplicity, destroy and recreate or update data.
+  // Let's destroy to ensure clean state for now.
   if (historyChart) historyChart.destroy();
   if (allocationChart) allocationChart.destroy();
 
+  // History Chart
   const historyCtx = historyChartCanvas.value?.getContext("2d");
   if (historyCtx) {
+    isLoadingHistory.value = true;
+    const { labels, data } = await getPortfolioHistory(selectedPortfolio.value, selectedPeriod.value);
+    isLoadingHistory.value = false;
+    
+    // Check if component unmounted during fetch
+    if (!historyChartCanvas.value) return;
+
     const gradient = historyCtx.createLinearGradient(0, 0, 0, 300);
     gradient.addColorStop(0, 'rgba(37, 99, 235, 0.2)');
     gradient.addColorStop(1, 'rgba(37, 99, 235, 0)');
@@ -107,9 +142,9 @@ async function createCharts() {
     historyChart = new Chart(historyCtx, {
       type: "line",
       data: {
-        labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], // Placeholder labels
+        labels: labels,
         datasets: [{
-          data: generateHistoryData(),
+          data: data,
           borderColor: "#3b82f6",
           backgroundColor: gradient,
           borderWidth: 2,
@@ -135,8 +170,9 @@ async function createCharts() {
     });
   }
 
+  // Allocation Chart
   const allocationCtx = allocationChartCanvas.value?.getContext("2d");
-  if (allocationCtx && selectedPortfolio.value) {
+  if (allocationCtx) {
     // Sort coins by value for better allocation chart
     const sortedCoins = [...selectedPortfolio.value.coins].sort((a, b) => b.value - a.value);
     
@@ -168,16 +204,6 @@ async function createCharts() {
       },
     });
   }
-}
-
-function generateHistoryData() {
-  if (!selectedPortfolio.value) return [];
-  const currentValue = selectedPortfolio.value.value;
-  // Generate a slightly more realistic looking fake curve ending at current value
-  return Array(7).fill(0).map((_, i) => {
-      const noise = (Math.random() - 0.5) * currentValue * 0.1;
-      return i === 6 ? currentValue : currentValue * (0.9 + Math.random() * 0.2); 
-  });
 }
 
 watch(selectedPortfolio, () => {

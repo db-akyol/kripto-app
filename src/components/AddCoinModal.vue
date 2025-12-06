@@ -147,12 +147,18 @@
   
             <!-- Tarih, ücret ve notlar -->
             <div class="grid grid-cols-3 gap-3 mb-8">
-              <button class="flex flex-col items-center justify-center gap-1 bg-gray-800/50 border border-gray-700/30 py-3 rounded-xl hover:bg-gray-700/50 hover:border-gray-600 transition-all group">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-hover:text-blue-400 mb-1" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
-                </svg>
-                <span class="text-xs text-gray-400">{{ formatDate(date).split(' ')[0] }}</span>
-              </button>
+              <div class="relative group">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-hover:text-blue-400 transition-colors" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
+                  </svg>
+                </div>
+                <input 
+                  type="date"
+                  v-model="date"
+                  class="w-full bg-gray-800/50 border border-gray-700/30 text-white py-3 pl-10 pr-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all font-mono text-sm [color-scheme:dark]"
+                />
+              </div>
               <button class="flex flex-col items-center justify-center gap-1 bg-gray-800/50 border border-gray-700/30 py-3 rounded-xl hover:bg-gray-700/50 hover:border-gray-600 transition-all group">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 group-hover:text-purple-400 mb-1" viewBox="0 0 20 20" fill="currentColor">
                   <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
@@ -211,7 +217,7 @@ const transactionType = ref("Al");
 const quantity = ref(0);
 const price = ref(0);
 const buyPrice = ref(0); // Added buyPrice ref
-const date = ref(new Date());
+const date = ref(new Date().toISOString().split('T')[0]);
 
 // Filtrelenmiş coinler
 const filteredCoins = computed(() => {
@@ -245,6 +251,7 @@ function addTransaction() {
       balance: quantity.value,
       value: quantity.value * price.value,
       buyPrice: buyPrice.value, // Include buyPrice in the emitted object
+      date: date.value, // Pass the date string
       change1h: 0,
       change24h: selectedCoin.value.change24h,
       change7d: 0,
@@ -263,7 +270,7 @@ function resetForm() {
   transactionType.value = "Al";
   quantity.value = 0;
   price.value = 0;
-  date.value = new Date();
+  date.value = new Date().toISOString().split('T')[0];
 }
 
 function formatNumber(value) {

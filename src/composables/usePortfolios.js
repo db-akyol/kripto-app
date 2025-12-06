@@ -3,6 +3,7 @@ import { getDefaultPortfolios } from "./useDefaultPortfolios";
 
 const STORAGE_KEY = "crypto-portfolios";
 const UPDATE_INTERVAL = 30000; // 30 saniye
+const historyCache = new Map(); // Singleton cache for history
 
 // Singleton state
 const portfolios = ref([]);
@@ -284,22 +285,34 @@ function savePortfoliosToStorage() {
 
     async function addCoin(portfolio, coin) {
       const existingCoin = portfolio.coins.find(c => c.symbol === coin.symbol);
-      // We are adding a new lot. For simplicity in this app, we will average the cost basis.
-      // New Avg Price = ((Old Bal * Old Price) + (New Bal * New Buy Price)) / Total Bal
       
-      const newBalance = coin.balance;
-      const newCost = coin.balance * (coin.buyPrice || coin.price);
+      const newBalance = parseFloat(coin.balance);
+      const newPrice = parseFloat(coin.buyPrice || coin.price);
+      const newDate = coin.date || new Date().toISOString().split('T')[0];
+      
+      const newTransaction = {
+        amount: newBalance,
+        price: newPrice,
+        date: newDate
+      };
 
       if (existingCoin) {
         const oldCost = existingCoin.balance * (existingCoin.buyPrice || existingCoin.price);
+        const newCost = newBalance * newPrice;
         const totalNewBalance = existingCoin.balance + newBalance;
         
         existingCoin.buyPrice = (oldCost + newCost) / totalNewBalance;
         existingCoin.balance = totalNewBalance;
+        
+        if (!existingCoin.transactions) existingCoin.transactions = [];
+        existingCoin.transactions.push(newTransaction);
+        
       } else {
         portfolio.coins.push({
           ...coin,
-          buyPrice: coin.buyPrice || coin.price, // Ensure buyPrice is set
+          balance: newBalance, // Ensure number
+          buyPrice: newPrice,
+          transactions: [ newTransaction ]
         });
       }
       
@@ -382,6 +395,159 @@ function savePortfoliosToStorage() {
       savePortfoliosToStorage();
     }
 
+
+    async function getPortfolioHistory(portfolio, period = '7d') {
+      if (!portfolio || !portfolio.coins.length) return { labels: [], data: [] };
+
+      // 1. Determine timeline
+      const now = Math.floor(Date.now() / 1000); // seconds
+      let from = now - (7 * 24 * 60 * 60); // Default 7d
+
+      // Calculate `from` based on period
+      if (period === '24h') from = now - (24 * 60 * 60);
+      else if (period === '30d') from = now - (30 * 24 * 60 * 60);
+      else if (period === '90d') from = now - (90 * 24 * 60 * 60);
+      else if (period === 'all') {
+        const earliestTx = portfolio.coins.reduce((min, c) => {
+           if (!c.transactions) return min;
+           const txMin = c.transactions.reduce((m, t) => {
+             const tTime = new Date(t.date).getTime() / 1000;
+             return tTime < m ? tTime : m;
+           }, min);
+           return txMin < min ? txMin : min;
+        }, now);
+        
+        // If earliest tx is "now" (no history found), default to 1 year or 1 month
+        if (earliestTx === now) from = now - (30 * 24 * 60 * 60); 
+        else from = earliestTx;
+      }
+      
+      from -= 3600; // Buffer
+
+      // 2. Fetch History
+      const coinHistories = {};
+      const uniqueCoinIds = [...new Set(portfolio.coins.map(c => c.coingeckoId))].filter(id => id);
+
+      // Log for debugging
+      console.log(`Fetching history for period: ${period}, from: ${new Date(from * 1000).toISOString()} to ${new Date(now * 1000).toISOString()}`);
+
+      try {
+        const promises = uniqueCoinIds.map(async (id) => {
+           const cacheKey = `${id}_${period}`;
+           if (historyCache.has(cacheKey)) {
+             return { id, prices: historyCache.get(cacheKey) };
+           }
+
+           const fromTs = Math.floor(from);
+           const toTs = Math.floor(now);
+           const url = `/api/coingecko/coins/${id}/market_chart/range?vs_currency=usd&from=${fromTs}&to=${toTs}`;
+           
+           // Retry logic (3 attempts)
+           for (let attempt = 0; attempt < 3; attempt++) {
+             try {
+                // Console log for debugging
+                if (attempt === 0) console.log(`Fetching history: ${url}`);
+                
+                const res = await fetch(url, { 
+                  headers: { 'Accept': 'application/json' } 
+                });
+                
+                // Handle Rate Limiting
+                if (res.status === 429) {
+                  console.warn(`Rate limit hit for ${id}, retrying...`);
+                  await new Promise(r => setTimeout(r, 1500 * (attempt + 1))); // Incremental backoff
+                  continue; 
+                }
+                
+                if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+                
+                const data = await res.json();
+                
+                if (!data.prices || !Array.isArray(data.prices)) {
+                   throw new Error("Invalid price data format");
+                }
+
+                historyCache.set(cacheKey, data.prices);
+                return { id, prices: data.prices };
+             } catch (e) {
+                console.error(`Fetch error ${id} (Attempt ${attempt+1}):`, e);
+                if (attempt === 2) return null; 
+                await new Promise(r => setTimeout(r, 1000));
+             }
+           }
+           return null;
+        });
+
+        const results = await Promise.all(promises);
+        results.forEach(r => {
+          if (r) coinHistories[r.id] = r.prices;
+        });
+
+      } catch (e) {
+        console.error("Error fetching history", e);
+      }
+
+      // 3. Aggregate
+      // Use time points
+      const timePoints = [];
+      const duration = now - from;
+      const steps = 50; 
+      const stepSize = duration / steps;
+      
+      for(let i = 0; i <= steps; i++) {
+        timePoints.push((from + (i * stepSize)) * 1000); // milliseconds for interpolation
+      }
+
+      const chartData = timePoints.map(t => {
+         let totalVal = 0;
+         
+         portfolio.coins.forEach(coin => {
+            // Price at time t
+            let price = coin.price; // Default to current
+            
+            if (coin.coingeckoId && coinHistories[coin.coingeckoId]) {
+               const prices = coinHistories[coin.coingeckoId];
+               if (prices.length > 0) {
+                  // Find closest price
+                  const closest = prices.reduce((prev, curr) => {
+                    return (Math.abs(curr[0] - t) < Math.abs(prev[0] - t) ? curr : prev);
+                  });
+                  price = closest[1];
+               }
+            }
+
+            // Balance at time t
+            let balance = 0;
+            if (coin.transactions && coin.transactions.length > 0) {
+               coin.transactions.forEach(tx => {
+                 // Check date
+                 // t is current point in loop (ms). tx.date is YYYY-MM-DD.
+                 // Parse tx.date to ms. Note: "2025-01-01" parses to UTC midnight.
+                 // t is driven by `now` (local -> epoch).
+                 // Comparison should be fine.
+                 const txTime = new Date(tx.date).getTime();
+                 if (txTime <= t) {
+                   balance += parseFloat(tx.amount);
+                 }
+               });
+            } else {
+               // Fallback: if no transactions, assume current balance was held for entire period?
+               // Or at least since 'from' if it's recent?
+               // User feedback: "1 ocak added". If existing coin (no tx recorded yet), assume balance exists.
+               balance = parseFloat(coin.balance);
+            }
+            
+            totalVal += (price * balance);
+         });
+         return totalVal;
+      });
+
+      return {
+        labels: timePoints.map(t => new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })),
+        data: chartData
+      };
+    }
+
     return {
       portfolios,
       selectedPortfolio,
@@ -395,6 +561,7 @@ function savePortfoliosToStorage() {
       resetPortfolios,
       updateCoinPrices,
       addPortfolio,
-      deletePortfolio
+      deletePortfolio,
+      getPortfolioHistory
     };
   }
