@@ -344,6 +344,8 @@ function savePortfoliosToStorage() {
       portfolios.value = getDefaultPortfolios();
       if (portfolios.value.length > 0) {
          selectedPortfolio.value = portfolios.value[0];
+      } else {
+         selectedPortfolio.value = null;
       }
       // Re-populate helper fields
       portfolios.value.forEach(updatePortfolioValues);

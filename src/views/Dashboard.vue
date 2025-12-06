@@ -7,58 +7,72 @@
 
     <!-- Main Content -->
     <div class="flex-1 min-w-0 space-y-6">
-      <!-- Top Section: Stats & Charts -->
-      <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        
-        <!-- History Chart (Wider - Takes 2 columns) -->
-        <div class="xl:col-span-2 bg-[#0d1421] rounded-2xl p-6 border border-gray-800">
-          <div class="flex justify-between items-start mb-6">
-            <div>
-              <div class="text-gray-400 text-sm mb-1">Total Balance</div>
-              <div class="text-3xl font-bold text-white mb-2">
-                ${{ formatNumber(selectedPortfolio?.value || 0) }}
+      <div v-if="selectedPortfolio">
+        <!-- Top Section: Stats & Charts -->
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
+          
+          <!-- History Chart (Wider - Takes 2 columns) -->
+          <div class="xl:col-span-2 bg-[#0d1421] rounded-2xl p-6 border border-gray-800">
+            <div class="flex justify-between items-start mb-6">
+              <div>
+                <div class="text-gray-400 text-sm mb-1">Total Balance</div>
+                <div class="text-3xl font-bold text-white mb-2">
+                  ${{ formatNumber(selectedPortfolio?.value || 0) }}
+                </div>
+                <div class="inline-flex items-center px-2 py-1 rounded bg-opacity-20 text-sm font-medium"
+                  :class="(selectedPortfolio?.change24h || 0) >= 0 ? 'bg-green-500 text-green-400' : 'bg-red-500 text-red-400'">
+                  <span class="mr-1">{{ (selectedPortfolio?.change24h || 0) >= 0 ? '▲' : '▼' }}</span>
+                  {{ formatNumber(Math.abs(selectedPortfolio?.change24h || 0)) }}% (24h)
+                </div>
               </div>
-              <div class="inline-flex items-center px-2 py-1 rounded bg-opacity-20 text-sm font-medium"
-                :class="(selectedPortfolio?.change24h || 0) >= 0 ? 'bg-green-500 text-green-400' : 'bg-red-500 text-red-400'">
-                <span class="mr-1">{{ (selectedPortfolio?.change24h || 0) >= 0 ? '▲' : '▼' }}</span>
-                {{ formatNumber(Math.abs(selectedPortfolio?.change24h || 0)) }}% (24h)
+              
+              <!-- Timeframe toggles -->
+              <div class="flex bg-gray-800 rounded-lg p-1">
+                <button 
+                  v-for="period in ['24h', '7d', '30d', '90d', 'all']" 
+                  :key="period"
+                  @click="selectPeriod(period)"
+                  class="px-3 py-1 text-xs font-medium rounded transition-all capitalize"
+                  :class="selectedPeriod === period ? 'bg-gray-600 text-white shadow' : 'text-gray-400 hover:text-white'"
+                >
+                  {{ period }}
+                </button>
               </div>
             </div>
             
-            <!-- Timeframe toggles (Visual only for now) -->
-            <!-- Timeframe toggles -->
-            <div class="flex bg-gray-800 rounded-lg p-1">
-              <button 
-                v-for="period in ['24h', '7d', '30d', '90d', 'all']" 
-                :key="period"
-                @click="selectPeriod(period)"
-                class="px-3 py-1 text-xs font-medium rounded transition-all capitalize"
-                :class="selectedPeriod === period ? 'bg-gray-600 text-white shadow' : 'text-gray-400 hover:text-white'"
-              >
-                {{ period }}
-              </button>
+            <div class="h-[300px] w-full relative">
+              <div v-if="isLoadingHistory" class="absolute inset-0 flex items-center justify-center bg-[#0d1421]/80 z-10 rounded-lg backdrop-blur-sm">
+                 <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+              </div>
+              <canvas ref="historyChartCanvas"></canvas>
             </div>
           </div>
-          
-          <div class="h-[300px] w-full relative">
-            <div v-if="isLoadingHistory" class="absolute inset-0 flex items-center justify-center bg-[#0d1421]/80 z-10 rounded-lg backdrop-blur-sm">
-               <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+
+          <!-- Allocation Chart (Takes 1 column) -->
+          <div class="bg-[#0d1421] rounded-2xl p-6 border border-gray-800 flex flex-col">
+            <h3 class="text-lg font-bold text-white mb-6">Allocation</h3>
+            <div class="flex-1 min-h-[250px] relative flex items-center justify-center">
+              <canvas ref="allocationChartCanvas"></canvas>
             </div>
-            <canvas ref="historyChartCanvas"></canvas>
           </div>
         </div>
 
-        <!-- Allocation Chart (Takes 1 column) -->
-        <div class="bg-[#0d1421] rounded-2xl p-6 border border-gray-800 flex flex-col">
-          <h3 class="text-lg font-bold text-white mb-6">Allocation</h3>
-          <div class="flex-1 min-h-[250px] relative flex items-center justify-center">
-            <canvas ref="allocationChartCanvas"></canvas>
-          </div>
-        </div>
+        <!-- Holdings Table -->
+        <HoldingsTable />
       </div>
 
-      <!-- Holdings Table -->
-      <HoldingsTable v-if="selectedPortfolio" />
+      <!-- Empty State Welcome -->
+      <div v-else class="flex flex-col items-center justify-center h-[500px] text-center p-8 bg-[#0d1421] rounded-2xl border border-gray-800 border-dashed">
+        <div class="w-20 h-20 bg-gray-800/50 rounded-full flex items-center justify-center mb-6">
+           <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+           </svg>
+        </div>
+        <h2 class="text-2xl font-bold text-white mb-2">Hoşgeldiniz! 👋</h2>
+        <p class="text-gray-400 max-w-md mb-8">
+          Kripto varlıklarınızı takip etmek için soldaki menüden <strong>"Yeni Portföy"</strong> butonuna tıklayarak başlayın.
+        </p>
+      </div>
     </div>
 
     <!-- Modals -->
@@ -117,13 +131,18 @@ const commonOptions = {
 async function createCharts() {
   await nextTick();
   
-  if (!selectedPortfolio.value) return;
+  // Always destroy existing charts first
+  if (historyChart) {
+    historyChart.destroy();
+    historyChart = null;
+  }
+  if (allocationChart) {
+    allocationChart.destroy();
+    allocationChart = null;
+  }
 
-  // Preserve existing chart instances if just updating data? 
-  // For simplicity, destroy and recreate or update data.
-  // Let's destroy to ensure clean state for now.
-  if (historyChart) historyChart.destroy();
-  if (allocationChart) allocationChart.destroy();
+  // If no portfolio selected, stop here (canvases likely hidden by v-if)
+  if (!selectedPortfolio.value) return;
 
   // History Chart
   const historyCtx = historyChartCanvas.value?.getContext("2d");
@@ -132,7 +151,7 @@ async function createCharts() {
     const { labels, data } = await getPortfolioHistory(selectedPortfolio.value, selectedPeriod.value);
     isLoadingHistory.value = false;
     
-    // Check if component unmounted during fetch
+    // Check if component unmounted or canvas gone
     if (!historyChartCanvas.value) return;
 
     const gradient = historyCtx.createLinearGradient(0, 0, 0, 300);
@@ -208,7 +227,7 @@ async function createCharts() {
 
 watch(selectedPortfolio, () => {
   nextTick(createCharts);
-});
+}, { deep: true });
 
 onMounted(() => {
   if (selectedPortfolio.value) createCharts();

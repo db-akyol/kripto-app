@@ -270,6 +270,7 @@ function resetForm() {
   transactionType.value = "Al";
   quantity.value = 0;
   price.value = 0;
+  buyPrice.value = 0;
   date.value = new Date().toISOString().split('T')[0];
 }
 

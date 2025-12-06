@@ -40,7 +40,5 @@
 const navItems = [
   { name: 'Dashboard', path: '/' },
   { name: 'Markets', path: '/markets' },
-  { name: 'Portfolio', path: '/portfolio' },
-  { name: 'Watchlist', path: '/watchlist' },
 ]
 </script>
