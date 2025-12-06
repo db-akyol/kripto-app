@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/coingecko/:match*",
+      "destination": "https://api.coingecko.com/api/v3/:match*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
