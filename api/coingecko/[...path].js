@@ -1,36 +1,48 @@
-export default async function handler(req, res) {
-  // Extract the path after /api/coingecko
-  const { url } = req;
-  const apiPath = url.replace(/^\/api\/coingecko/, '');
+export const config = {
+  runtime: 'edge',
+};
+
+export default async function handler(request) {
+  const url = new URL(request.url);
+  const pathAfterApi = url.pathname.replace(/^\/api\/coingecko/, '');
+  const queryString = url.search;
   
-  const coingeckoUrl = `https://api.coingecko.com/api/v3${apiPath}`;
+  const coingeckoUrl = `https://api.coingecko.com/api/v3${pathAfterApi}${queryString}`;
+  
+  console.log('Proxying to:', coingeckoUrl);
   
   try {
     const response = await fetch(coingeckoUrl, {
-      method: req.method,
+      method: request.method,
       headers: {
         'Accept': 'application/json',
-        'User-Agent': 'DenoWallet/1.0'
+        'User-Agent': 'Mozilla/5.0 (compatible; DenoWallet/1.0)'
       }
     });
 
-    // Forward rate limit headers
-    const rateLimitRemaining = response.headers.get('x-ratelimit-remaining');
-    if (rateLimitRemaining) {
-      res.setHeader('X-RateLimit-Remaining', rateLimitRemaining);
-    }
-
-    const data = await response.json();
+    const data = await response.text();
     
-    // Set CORS headers
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    res.setHeader('Cache-Control', 's-maxage=30, stale-while-revalidate');
-    
-    res.status(response.status).json(data);
+    return new Response(data, {
+      status: response.status,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Cache-Control': 's-maxage=30, stale-while-revalidate=60'
+      }
+    });
   } catch (error) {
     console.error('CoinGecko API Error:', error);
-    res.status(500).json({ error: 'Failed to fetch from CoinGecko API' });
+    return new Response(
+      JSON.stringify({ error: 'Failed to fetch from CoinGecko API', details: error.message }),
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      }
+    );
   }
 }
