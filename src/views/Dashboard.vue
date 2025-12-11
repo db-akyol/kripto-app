@@ -20,9 +20,9 @@
                   ${{ formatNumber(selectedPortfolio?.value || 0) }}
                 </div>
                 <div class="inline-flex items-center px-2 py-1 rounded bg-opacity-20 text-sm font-medium"
-                  :class="(selectedPortfolio?.change24h || 0) >= 0 ? 'bg-green-500 text-green-400' : 'bg-red-500 text-red-400'">
-                  <span class="mr-1">{{ (selectedPortfolio?.change24h || 0) >= 0 ? '▲' : '▼' }}</span>
-                  {{ formatNumber(Math.abs(selectedPortfolio?.change24h || 0)) }}% (24h)
+                  :class="periodPnLPercentage >= 0 ? 'bg-green-500 text-green-400' : 'bg-red-500 text-red-400'">
+                  <span class="mr-1">{{ periodPnLPercentage >= 0 ? '▲' : '▼' }}</span>
+                  {{ formatNumber(Math.abs(periodPnLPercentage)) }}% ({{ selectedPeriod }})
                 </div>
               </div>
               
@@ -96,6 +96,8 @@ let allocationChart = null;
 const showAddCoinModal = ref(false);
 const selectedPeriod = ref('7d');
 const isLoadingHistory = ref(false);
+const periodPnL = ref(0);
+const periodPnLPercentage = ref(0);
 
 const totalPortfolioValue = computed(() => {
   return portfolios.value.reduce((sum, portfolio) => sum + portfolio.value, 0);
@@ -147,9 +149,14 @@ async function createCharts() {
   // History Chart
   const historyCtx = historyChartCanvas.value?.getContext("2d");
   if (historyCtx) {
-    isLoadingHistory.value = true;
-    const { labels, data } = await getPortfolioHistory(selectedPortfolio.value, selectedPeriod.value);
+      isLoadingHistory.value = true;
+    const historyData = await getPortfolioHistory(selectedPortfolio.value, selectedPeriod.value);
     isLoadingHistory.value = false;
+    
+    // Extract chart data and period P&L
+    const { labels, data } = historyData;
+    periodPnL.value = historyData.periodPnL || 0;
+    periodPnLPercentage.value = historyData.periodPnLPercentage || 0;
     
     // Check if component unmounted or canvas gone
     if (!historyChartCanvas.value) return;

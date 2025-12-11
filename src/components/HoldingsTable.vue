@@ -39,7 +39,7 @@
             </td>
             <td class="text-gray-200">${{ formatNumber(coin.price) }}</td>
             <td class="text-gray-400">${{ formatNumber(coin.buyPrice || coin.price) }}</td>
-            <td :class="getChangeColor(coin.change24h)">{{ formatNumber(coin.change24h) }}%</td>
+            <td :class="getChangeColor(coin.change24h || 0)">{{ formatNumber(coin.change24h || 0) }}%</td>
             <td>
                <div class="flex flex-col">
                   <span :class="getChangeColor(coin.pnl)">

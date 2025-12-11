@@ -12,7 +12,7 @@ export function useCoins() {
 
     try {
       // CoinGecko API'si sayfa başına maksimum 250 coin veriyor.
-      // 1000 coin için 4 sayfayı paralel olarak çekiyoruz.
+      // 1000 coin için 4 sayfayı sırayla çekiyoruz.
       const pages = [1, 2, 3, 4];
       
       const responses = await Promise.all(
@@ -31,32 +31,33 @@ export function useCoins() {
         )
       );
 
-      // Tüm yanıtların başarılı olup olmadığını kontrol et
-      const validResponses = await Promise.all(
-        responses.map(async (res) => {
-           if (!res.ok) return [];
-           return res.json();
-        })
-      );
+      // Sırayı koruyarak yanıtları işle
+      const validResponses = [];
+      for (let i = 0; i < responses.length; i++) {
+        const res = responses[i];
+        if (res.ok) {
+          const data = await res.json();
+          validResponses.push(...data);
+        }
+      }
 
-      // Tüm sayfaların verilerini tek bir dizide birleştir
-      const allCoins = validResponses.flat();
-
-      if (allCoins.length === 0) {
+      if (validResponses.length === 0) {
          throw new Error("Hiçbir coin verisi alınamadı.");
       }
 
-      // Verileri işle
-      coins.value = allCoins.map(coin => ({
-        id: coin.id,
-        coingeckoId: coin.id,
-        name: coin.name,
-        symbol: coin.symbol.toUpperCase(),
-        icon: coin.image,
-        price: coin.current_price,
-        change24h: coin.price_change_percentage_24h,
-        marketCap: coin.market_cap,
-      }));
+      // Verileri işle ve market cap'e göre sırala
+      coins.value = validResponses
+        .map(coin => ({
+          id: coin.id,
+          coingeckoId: coin.id,
+          name: coin.name,
+          symbol: coin.symbol.toUpperCase(),
+          icon: coin.image,
+          price: coin.current_price,
+          change24h: coin.price_change_percentage_24h,
+          marketCap: coin.market_cap,
+        }))
+        .sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
     } catch (e) {
       error.value = "Coin verileri yüklenirken bir hata oluştu. Lütfen daha sonra tekrar deneyin.";
       console.error("Coin verileri çekilirken hata oluştu:", e);

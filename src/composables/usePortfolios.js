@@ -98,11 +98,14 @@ function savePortfoliosToStorage() {
       
       coin.pnl = coin.value - coin.totalCost;
       coin.pnlPercentage = coin.totalCost > 0 ? (coin.pnl / coin.totalCost) * 100 : 0;
+      
+      // Ensure change24h is a valid number
+      coin.change24h = typeof coin.change24h === 'number' && !isNaN(coin.change24h) ? coin.change24h : 0;
 
       portfolio.value += coin.value;
       portfolio.totalCost += coin.totalCost;
       
-      // Weighted 24h change calculation could be improved, but summing value change is simpler
+      // Weighted 24h change calculation
       portfolio.change24h += (coin.value * coin.change24h) / 100;
     });
 
@@ -544,9 +547,26 @@ function savePortfoliosToStorage() {
          return totalVal;
       });
 
+      // Calculate period P&L
+      // Find first non-zero value for start (handles buffer time before first transaction)
+      let periodStartValue = 0;
+      for (let i = 0; i < chartData.length; i++) {
+        if (chartData[i] > 0) {
+          periodStartValue = chartData[i];
+          break;
+        }
+      }
+      const periodEndValue = chartData.length > 0 ? chartData[chartData.length - 1] : 0;
+      const periodPnL = periodEndValue - periodStartValue;
+      const periodPnLPercentage = periodStartValue > 0 ? (periodPnL / periodStartValue) * 100 : 0;
+
       return {
         labels: timePoints.map(t => new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })),
-        data: chartData
+        data: chartData,
+        periodStartValue,
+        periodEndValue,
+        periodPnL,
+        periodPnLPercentage
       };
     }
 
