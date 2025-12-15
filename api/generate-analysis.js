@@ -23,8 +23,8 @@ export default async function handler(req, res) {
       }).then(r => r.json()).catch(() => null)
     ]);
 
-    const btc = btcDataRes?.find(c => c.id === 'bitcoin');
-    const eth = btcDataRes?.find(c => c.id === 'ethereum');
+    const btc = Array.isArray(btcDataRes) ? btcDataRes.find(c => c.id === 'bitcoin') : null;
+    const eth = Array.isArray(btcDataRes) ? btcDataRes.find(c => c.id === 'ethereum') : null;
 
     // 2. Build comprehensive prompt with collected data
     const marketData = {
