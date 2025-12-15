@@ -50,40 +50,63 @@ export default async function handler(req, res) {
       derivatives: null
     });
 
-    // 3. Call Gemini API
+    // 3. Call AI API (Groq or Gemini)
+    const groqApiKey = process.env.GROQ_API_KEY;
     const geminiApiKey = process.env.GEMINI_API_KEY;
     
-    if (!geminiApiKey) {
+    let analysisText = '';
+
+    if (groqApiKey) {
+      // Use Groq API (preferred - faster and more reliable)
+      const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${groqApiKey}`
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.7,
+          max_tokens: 2048
+        })
+      });
+
+      if (!groqResponse.ok) {
+        const errorText = await groqResponse.text();
+        throw new Error(`Groq API error: ${groqResponse.status} - ${errorText}`);
+      }
+
+      const groqData = await groqResponse.json();
+      analysisText = groqData.choices?.[0]?.message?.content || 'Analiz oluşturulamadı.';
+      
+    } else if (geminiApiKey) {
+      // Fallback to Gemini
+      const geminiResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiApiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.7, maxOutputTokens: 2048 }
+          })
+        }
+      );
+
+      if (!geminiResponse.ok) {
+        const errorText = await geminiResponse.text();
+        throw new Error(`Gemini API error: ${geminiResponse.status} - ${errorText}`);
+      }
+
+      const geminiData = await geminiResponse.json();
+      analysisText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || 'Analiz oluşturulamadı.';
+    } else {
       return res.status(500).json({
         success: false,
-        error: 'GEMINI_API_KEY not configured'
+        error: 'No AI API key configured (GROQ_API_KEY or GEMINI_API_KEY required)'
       });
     }
-
-    const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiApiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{ text: prompt }]
-          }],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 2048
-          }
-        })
-      }
-    );
-
-    if (!geminiResponse.ok) {
-      const errorText = await geminiResponse.text();
-      throw new Error(`Gemini API error: ${geminiResponse.status} - ${errorText}`);
-    }
-
-    const geminiData = await geminiResponse.json();
-    const analysisText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || 'Analiz oluşturulamadı.';
 
     // 4. Parse the analysis
     const analysis = {
