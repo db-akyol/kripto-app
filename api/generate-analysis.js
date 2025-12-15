@@ -236,25 +236,57 @@ ${data.news?.length > 0 ? data.news.slice(0, 5).map(n => `- ${n.title} (${n.sent
 
 ---
 
+ÖNEMLİ TALİMATLAR:
+- KESİN ve NET yorumlar yap, ortada kalma!
+- Her zaman BOĞA veya AYI tarafını seç, "nötr" sadece gerçekten belirsizse
+- Güçlü, kararlı ifadeler kullan: "kesinlikle", "açıkça", "şiddetle"
+- Somut fiyat tahminleri ve hedefler ver
+- Riskleri ve fırsatları net belirt
+- Sentiment analizi sonucunu açıkça yaz
+
 Lütfen şu formatta yanıt ver:
 
 ## 📊 GÜNLÜK ANALİZ
 
-### Piyasa Özeti
-[2-3 cümlelik genel piyasa özeti]
+### 🎯 Bugünün Özeti
+[2-3 cümle AMA keskin ve kararlı yorum. Net bir BOĞA veya AYI görüşü belirt.]
 
-### Teknik Görünüm
-[Teknik indikatörlere dayalı analiz]
+### 📈 Teknik Analiz
+[RSI, SMA ve fiyat hareketlerine dayalı KESİN yorumlar. "Muhtemelen" yerine "kesinlikle" kullan.]
 
-### Kritik Seviyeler
-- Destek: [seviyeler]
-- Direnç: [seviyeler]
+### 💰 Kritik Seviyeler
+- **Güçlü Destek:** [fiyat] - [neden önemli]
+- **Güçlü Direnç:** [fiyat] - [neden önemli]
+- **Hedef Fiyat:** [kısa vadeli tahmin]
 
-### Genel Değerlendirme
-[BOĞA/AYI/NÖTR] - [Kısa açıklama]
+### 🔮 BENİM TAHMİNİM
+**Yön:** [YUKARI ⬆️ / AŞAĞI ⬇️]
+**Beklenen Hareket:** [% kaç hareket bekliyorsun, örn: %5-10 yükseliş]
 
-### Dikkat Edilmesi Gerekenler
-[Önemli noktalar listesi]`;
+**Yükselmesi İçin Gerekenler:**
+- [koşul 1, örn: $88,000 direncini kırması]
+- [koşul 2, örn: RSI'ın 60 üzerine çıkması]
+- [koşul 3, örn: Hacmin artması]
+
+**Düşmesi İçin Sebepler:**
+- [risk 1, örn: $85,000 desteğini kaybetmesi]
+- [risk 2, örn: Negatif haber akışı]
+- [risk 3, örn: Global piyasalarda satış baskısı]
+
+### ⚡ SONUÇ: [BOĞA 🐂 / AYI 🐻]
+[Net ve kararlı 1-2 cümlelik değerlendirme. Ortada kalma!]
+
+### 📰 Piyasa Duyarlılığı
+[Haberlerden ve verilerden çıkarılan genel sentiment: Çok Olumlu / Olumlu / Olumsuz / Çok Olumsuz]
+
+### ⚠️ Riskler ve Fırsatlar
+**Fırsatlar:**
+- [somut fırsat 1]
+- [somut fırsat 2]
+
+**Riskler:**
+- [somut risk 1]
+- [somut risk 2]`;
 }
 
 function extractSummary(text) {
