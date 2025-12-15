@@ -18,6 +18,11 @@ const router = createRouter({
       path: '/markets',
       name: 'markets',
       component: () => import('../views/MarketsView.vue')
+    },
+    {
+      path: '/ai-analyst',
+      name: 'ai-analyst',
+      component: () => import('../views/AIAnalystView.vue')
     }
   ]
 })

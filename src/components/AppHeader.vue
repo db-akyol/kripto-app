@@ -40,5 +40,6 @@
 const navItems = [
   { name: 'Dashboard', path: '/' },
   { name: 'Markets', path: '/markets' },
+  { name: 'AI Analist', path: '/ai-analyst' },
 ]
 </script>
