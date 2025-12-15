@@ -10,15 +10,26 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Collect all current data directly from external APIs
-    const [btcDataRes, globalRes, onchainRes] = await Promise.all([
+    // 1. Collect all current data from multiple sources
+    const [btcDataRes, globalRes, onchainRes, btcHistoryRes, newsRes] = await Promise.all([
+      // Market data
       fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin,ethereum&order=market_cap_desc&sparkline=false', {
         headers: { 'Accept': 'application/json', 'User-Agent': 'DenoWallet/1.0' }
       }).then(r => r.json()).catch(() => null),
+      // Global market data
       fetch('https://api.coingecko.com/api/v3/global', {
         headers: { 'Accept': 'application/json', 'User-Agent': 'DenoWallet/1.0' }
       }).then(r => r.json()).catch(() => null),
+      // On-chain data
       fetch('https://api.blockchain.info/stats', {
+        headers: { 'Accept': 'application/json' }
+      }).then(r => r.json()).catch(() => null),
+      // Price history for technical indicators (30 days)
+      fetch('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=30&interval=daily', {
+        headers: { 'Accept': 'application/json', 'User-Agent': 'DenoWallet/1.0' }
+      }).then(r => r.json()).catch(() => null),
+      // News from CryptoPanic
+      fetch('https://cryptopanic.com/api/v1/posts/?auth_token=public&public=true&filter=hot&currencies=BTC,ETH', {
         headers: { 'Accept': 'application/json' }
       }).then(r => r.json()).catch(() => null)
     ]);
@@ -26,28 +37,54 @@ export default async function handler(req, res) {
     const btc = Array.isArray(btcDataRes) ? btcDataRes.find(c => c.id === 'bitcoin') : null;
     const eth = Array.isArray(btcDataRes) ? btcDataRes.find(c => c.id === 'ethereum') : null;
 
-    // 2. Build comprehensive prompt with collected data
+    // Calculate technical indicators from price history
+    let technicalData = null;
+    if (btcHistoryRes?.prices && btcHistoryRes.prices.length > 14) {
+      const prices = btcHistoryRes.prices.map(p => p[1]);
+      technicalData = {
+        rsi_14: calculateRSI(prices, 14),
+        sma_7: calculateSMA(prices, 7),
+        sma_20: calculateSMA(prices, 20),
+        price_change_7d: prices.length >= 7 ? ((prices[prices.length-1] - prices[prices.length-7]) / prices[prices.length-7] * 100) : null,
+        price_change_30d: prices.length >= 30 ? ((prices[prices.length-1] - prices[0]) / prices[0] * 100) : null,
+        volatility: calculateVolatility(prices.slice(-7))
+      };
+    }
+
+    // Parse news
+    const newsData = (newsRes?.results || []).slice(0, 5).map(n => ({
+      title: n.title,
+      sentiment: n.votes?.positive > n.votes?.negative ? 'positive' : 
+                 n.votes?.negative > n.votes?.positive ? 'negative' : 'neutral'
+    }));
+
+    // Market data
     const marketData = {
       btc_price: btc?.current_price,
       btc_24h_change: btc?.price_change_percentage_24h,
       btc_market_cap: btc?.market_cap,
       btc_volume: btc?.total_volume,
       eth_price: eth?.current_price,
-      total_market_cap: globalRes?.data?.total_market_cap?.usd
+      eth_24h_change: eth?.price_change_percentage_24h,
+      total_market_cap: globalRes?.data?.total_market_cap?.usd,
+      btc_dominance: globalRes?.data?.market_cap_percentage?.btc
     };
 
+    // On-chain data
     const onchainData = {
       hash_rate: onchainRes?.hash_rate,
+      difficulty: onchainRes?.difficulty,
       transaction_count: onchainRes?.n_tx,
-      mempool_size: 0
+      mempool_size: onchainRes?.mempool_size || 0,
+      blocks_mined: onchainRes?.n_blocks_mined
     };
 
     const prompt = buildAnalysisPrompt({
       market: marketData,
-      technicals: null, // Will be calculated in future
-      news: [],
+      technicals: technicalData,
+      news: newsData,
       onchain: onchainData,
-      derivatives: null
+      derivatives: null // Can be added later with Coinglass API key
     });
 
     // 3. Call AI API (Groq or Gemini)
@@ -173,12 +210,11 @@ ${data.market ? `
 ## TEKNİK İNDİKATÖRLER
 ${data.technicals ? `
 - RSI (14): ${data.technicals.rsi_14?.toFixed(2)} ${data.technicals.rsi_14 > 70 ? '(Aşırı Alım)' : data.technicals.rsi_14 < 30 ? '(Aşırı Satım)' : '(Nötr)'}
-- MACD: ${data.technicals.macd?.toFixed(4)}
-- EMA 20: $${data.technicals.ema_20?.toLocaleString()}
-- EMA 50: $${data.technicals.ema_50?.toLocaleString()}
-- EMA 200: $${data.technicals.ema_200?.toLocaleString()}
-- Bollinger Üst: $${data.technicals.bb_upper?.toLocaleString()}
-- Bollinger Alt: $${data.technicals.bb_lower?.toLocaleString()}
+- SMA 7 Günlük: $${data.technicals.sma_7?.toLocaleString()}
+- SMA 20 Günlük: $${data.technicals.sma_20?.toLocaleString()}
+- 7 Günlük Değişim: %${data.technicals.price_change_7d?.toFixed(2)}
+- 30 Günlük Değişim: %${data.technicals.price_change_30d?.toFixed(2)}
+- 7 Günlük Volatilite: $${data.technicals.volatility?.toFixed(2)}
 ` : 'Teknik veriler mevcut değil.'}
 
 ## ON-CHAIN VERİLERİ
@@ -234,4 +270,45 @@ function extractSentiment(text) {
     return 'bearish';
   }
   return 'neutral';
+}
+
+// RSI Calculation
+function calculateRSI(prices, period = 14) {
+  if (prices.length < period + 1) return null;
+  
+  const changes = [];
+  for (let i = 1; i < prices.length; i++) {
+    changes.push(prices[i] - prices[i - 1]);
+  }
+
+  const gains = changes.map(c => c > 0 ? c : 0);
+  const losses = changes.map(c => c < 0 ? Math.abs(c) : 0);
+
+  let avgGain = gains.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  let avgLoss = losses.slice(0, period).reduce((a, b) => a + b, 0) / period;
+
+  for (let i = period; i < changes.length; i++) {
+    avgGain = (avgGain * (period - 1) + gains[i]) / period;
+    avgLoss = (avgLoss * (period - 1) + losses[i]) / period;
+  }
+
+  if (avgLoss === 0) return 100;
+  const rs = avgGain / avgLoss;
+  return 100 - (100 / (1 + rs));
+}
+
+// SMA Calculation
+function calculateSMA(prices, period) {
+  if (prices.length < period) return null;
+  const slice = prices.slice(-period);
+  return slice.reduce((a, b) => a + b, 0) / period;
+}
+
+// Volatility Calculation (standard deviation)
+function calculateVolatility(prices) {
+  if (prices.length < 2) return null;
+  const mean = prices.reduce((a, b) => a + b, 0) / prices.length;
+  const squaredDiffs = prices.map(p => Math.pow(p - mean, 2));
+  const variance = squaredDiffs.reduce((a, b) => a + b, 0) / prices.length;
+  return Math.sqrt(variance);
 }
